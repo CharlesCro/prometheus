@@ -1,9 +1,14 @@
+# Standard Libraries
+import ast
+
 # Non-Standard Libraries
 from dotenv import load_dotenv
 import streamlit as st
 
 # Custom Modules
 from services.prometheus_service import initialize_adk, run_adk_sync
+from services.author_service import invoke
+from utils.helpers import convert_to_json
 from config.settings import MESSAGE_HISTORY_KEY, get_api_key
 
 load_dotenv()
@@ -43,8 +48,26 @@ def run_streamlit_app():
 
 
     print(f"DEBUG UI: Using ADK session ID: {current_session_id}")
-   
 
+    
+    if st.button('Generate & Send Random Prompt'):
+        # 1. Generate the prompt
+        generated_prompt = invoke()
+        
+        # 2. Append user's message to history (simulating user input)
+        st.session_state[MESSAGE_HISTORY_KEY].append({'role': 'user', 'content': generated_prompt})
+        
+        # 3. Process the prompt (get assistant's response)
+        print(f"DEBUG UI: Sending generated prompt to ADK with session ID: {current_session_id}")
+        agent_response = run_adk_sync(adk_runner, current_session_id, generated_prompt)
+        print(f"DEBUG UI: Received response from ADK for generated prompt: {agent_response[:50]}...")
+        
+        # 4. Append assistant's response to history.
+        st.session_state[MESSAGE_HISTORY_KEY].append({'role': 'assistant', 'content': agent_response})
+        
+        # 5. Rerun the app to refresh the display and show the new messages
+        st.rerun()
+        
 
     # Initialize chat message history in Streamlit's session state if it doesn't exist.
     if MESSAGE_HISTORY_KEY not in st.session_state:
